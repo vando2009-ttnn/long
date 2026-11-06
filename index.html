@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Đấu trường Sử học Tây Ninh</title>
+<style>
+:root{--bg:#101827;--panel:#1b2940;--panel2:#243650;--gold:#ffd166;--blue:#59c3ff;--green:#58d68d;--red:#ff6b6b;--text:#f4f7fb;--muted:#aebbd0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#203653,#101827 65%);color:var(--text);font:16px/1.5 system-ui,Arial,sans-serif;min-height:100vh}
+header{padding:22px 16px;text-align:center;border-bottom:1px solid #ffffff20}header h1{margin:0;color:var(--gold);font-size:clamp(24px,5vw,38px)}header p{margin:6px 0 0;color:var(--muted)}
+main{max-width:1050px;margin:24px auto;padding:0 14px}.panel{background:#1b2940ed;border:1px solid #ffffff20;border-radius:18px;padding:20px;box-shadow:0 12px 35px #0004;margin-bottom:16px}
+h2{margin:0 0 14px;color:var(--gold)}h3{margin:0 0 10px}
+input,select,button{font:inherit;border-radius:10px;padding:11px 13px;border:1px solid #ffffff30}
+input,select{background:#101c2d;color:white;width:100%;margin:5px 0 12px}
+button{cursor:pointer;background:var(--blue);color:#102033;font-weight:750;border:0;margin:4px}button:hover{filter:brightness(1.08)}button.secondary{background:#52647d;color:white}button.danger{background:var(--red);color:#2b1010}button.good{background:var(--green);color:#092515}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.row>*{flex:1}.hidden{display:none!important}.muted{color:var(--muted)}.tag{display:inline-block;padding:4px 10px;border-radius:99px;background:#344b68;color:#dcecff;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.stat{background:#243650;border-radius:13px;padding:14px}.stat b{display:block;font-size:25px;color:var(--gold)}
+#timer{font-size:42px;font-weight:900;color:var(--gold);text-align:center}#question{font-size:21px;font-weight:750;margin:12px 0}
+.answer{display:block;width:100%;text-align:left;background:#2a405d;color:white;margin:8px 0;padding:14px;border:1px solid #ffffff20}.answer:disabled{opacity:.65;cursor:default}.answer.selected{outline:3px solid var(--gold)}
+.progress{height:9px;background:#0c1522;border-radius:9px;overflow:hidden}.progress span{display:block;height:100%;background:var(--green);width:0}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid #ffffff20}small{color:var(--muted)}
+.notice{background:#3b3320;border-left:4px solid var(--gold);padding:12px;border-radius:8px;color:#ffedc2}
+footer{text-align:center;color:var(--muted);padding:20px;font-size:13px}
+</style>
+</head>
+<body>
+<header><h1>🏆 ĐẤU TRƯỜNG SỬ HỌC TÂY NINH</h1><p>4 vòng thi · 10 câu mỗi vòng · 15 giây mỗi câu</p></header>
+<main>
+<section id="login" class="panel">
+<h2>Đăng nhập thí sinh</h2>
+<p class="muted">Nhập tên để vào phòng chờ. Mỗi thí sinh chơi trên thiết bị của mình khi có máy chủ kết nối.</p>
+<label for="playerName">Tên thí sinh</label><input id="playerName" maxlength="30" placeholder="Ví dụ: Nguyễn Văn A">
+<button onclick="joinGame()">Vào phòng chờ</button>
+<button class="secondary" onclick="showAdminLogin()">Đăng nhập quản trị</button>
+<div id="loginMsg" class="muted"></div>
+</section>
+
+<section id="waiting" class="panel hidden">
+<h2>⏳ Phòng chờ thí sinh</h2><p>Xin chào <b id="welcomeName"></b>! Bạn đã vào phòng chờ.</p>
+<div class="notice">Trạng thái cuộc thi: <b id="gameStatus">Đang chờ quản trị viên bắt đầu</b></div>
+<p class="muted">Danh sách bên dưới là dữ liệu demo lưu trên trình duyệt hiện tại.</p>
+<div id="waitingList"></div><button class="secondary" onclick="logout()">Thoát</button>
+</section>
+
+<section id="contest" class="panel hidden">
+<div class="row"><div><span class="tag" id="roundLabel">Vòng 1</span> <span class="tag" id="qLabel">Câu 1/10</span></div><div id="timer">15</div></div>
+<div class="progress"><span id="timerBar"></span></div>
+<div id="question"></div><div id="answers"></div><p id="feedback" class="muted"></p>
+<div class="row"><span>Điểm: <b id="score">0</b></span><span id="roundProgress" class="muted"></span></div>
+</section>
+
+<section id="result" class="panel hidden"><h2>🎉 Kết quả của bạn</h2><p id="finalResult"></p><button onclick="backWaiting()">Về phòng chờ</button></section>
+
+<section id="adminLogin" class="panel hidden">
+<h2>🔐 Đăng nhập Admin</h2><label>Mật khẩu quản trị</label><input id="adminPass" type="password" placeholder="Mật khẩu mặc định: admin123">
+<button onclick="adminLogin()">Đăng nhập</button><button class="secondary" onclick="showLogin()">Quay lại</button><p id="adminMsg" class="muted"></p>
+</section>
+
+<section id="admin" class="hidden">
+<div class="panel"><div class="row"><h2>🛡️ Bảng điều khiển Admin</h2><span class="tag">Quản trị cuộc thi</span></div>
+<div class="grid"><div class="stat">Thí sinh trong phiên<b id="totalPlayers">0</b></div><div class="stat">Đã hoàn thành<b id="finishedPlayers">0</b></div><div class="stat">Báo cáo vi phạm<b id="reportCount">0</b></div></div>
+<div class="row" style="margin-top:12px"><button class="good" onclick="startGame()">▶ Bắt đầu cuộc thi</button><button class="secondary" onclick="refreshAdmin()">↻ Làm mới bảng</button><button class="danger" onclick="resetGame()">Đặt lại cuộc thi</button><button class="secondary" onclick="showLogin()">Đăng xuất</button></div>
+<p class="notice">Mật khẩu demo: <b>admin123</b>. Nút cấm thi chỉ đánh dấu thí sinh trong phiên demo này.</p></div>
+<div class="panel"><h2>👥 Quan sát thí sinh</h2><div id="adminPlayers"></div></div>
+<div class="panel"><h2>🚩 Báo cáo vi phạm</h2><div id="reports"></div></div>
+</section>
+</main>
+<footer>Phiên bản demo HTML độc lập · Dữ liệu chỉ lưu trên thiết bị/trình duyệt hiện tại</footer>
+<script>
+const rounds = [
+[
+["Địa danh Tây Ninh gắn với ngọn núi nổi tiếng nào? ",["Núi Bà Đen","Núi Langbiang","Núi Chứa Chan","Núi Sam"],0],
+["Tây Ninh thuộc vùng địa lý nào của Việt Nam?",["Tây Bắc","Đông Nam Bộ","Tây Nguyên","Đồng bằng Bắc Bộ"],1],
+["Tòa Thánh Cao Đài nổi tiếng nằm ở đâu?",["Gò Dầu","Trảng Bàng","TP. Tây Ninh","Tân Biên"],2],
+["Sông lớn gắn với địa bàn Tây Ninh là sông nào?",["Sông Hồng","Sông Vàm Cỏ Đông","Sông Hương","Sông Đà"],1],
+["Di tích Trung ương Cục miền Nam thuộc địa bàn tỉnh nào hiện nay?",["Tây Ninh","Đồng Nai","Bình Thuận","An Giang"],0],
+["Tây Ninh tiếp giáp quốc gia nào?",["Lào","Campuchia","Thái Lan","Trung Quốc"],1],
+["Núi Bà Đen thuộc khu vực nào của Tây Ninh?",["Dương Minh Châu","TP. Tây Ninh","Bến Cầu","Tân Châu"],1],
+["Địa đạo An Thới là di tích lịch sử thuộc huyện/thị xã nào trước đây?",["Trảng Bàng","Tân Biên","Dương Minh Châu","Châu Thành"],0],
+["Tây Ninh là một địa bàn quan trọng trong cuộc kháng chiến nào?",["Chống Pháp và chống Mỹ","Chống Nguyên","Chống Thanh","Chống Minh"],0],
+["Cửa khẩu quốc tế nổi tiếng của Tây Ninh là cửa khẩu nào?",["Mộc Bài","Lao Bảo","Hữu Nghị","Móng Cái"],0]
+],
+[
+["Căn cứ Trung ương Cục miền Nam còn được biết đến với tên gọi nào?",["Rừng Rong","Căn cứ Bắc Sơn","Căn cứ R","Chiến khu Đ"],2],
+["Căn cứ Trung ương Cục miền Nam hiện thuộc khu vực nào?",["Tân Biên","Gò Dầu","Trảng Bàng","Bến Cầu"],0],
+["Trong kháng chiến chống Mỹ, Tây Ninh giữ vị trí chiến lược vì lý do nào?",["Giáp Sài Gòn và Campuchia","Có cảng biển lớn","Nằm sát biên giới phía Bắc","Có đồng bằng rộng nhất"],0],
+["Chiến thắng Tua Hai diễn ra vào năm nào?",["1954","1960","1968","1975"],1],
+["Phong trào Đồng Khởi ở miền Nam bùng nổ mạnh vào giai đoạn nào?",["1959–1960","1945–1946","1972–1973","1986–1987"],0],
+["Tỉnh Tây Ninh nằm ở phía nào của TP. Hồ Chí Minh?",["Đông Nam","Tây Bắc","Đông Bắc","Nam"],1],
+["Di tích lịch sử Căn cứ Dương Minh Châu gắn với thời kỳ nào?",["Kháng chiến chống Pháp và Mỹ","Thời Lý","Thời Trần","Thời Nguyễn sơ"],0],
+["Tây Ninh có đường biên giới với Campuchia ở phía nào?",["Phía Bắc và Tây","Phía Đông","Phía Nam","Phía Đông Nam"],0],
+["Tên gọi 'Tây Ninh' gắn với đơn vị hành chính cấp tỉnh từ triều đại nào?",["Nhà Nguyễn","Nhà Đinh","Nhà Lý","Nhà Hồ"],0],
+["Địa danh Trảng Bàng nổi tiếng với đặc sản nào?",["Bánh tráng phơi sương","Cốm làng Vòng","Bún bò Huế","Mì Quảng"],0]
+],
+[
+["Tòa Thánh Tây Ninh là công trình tiêu biểu của tôn giáo nào?",["Phật giáo","Cao Đài","Hòa Hảo","Công giáo"],1],
+["Đạo Cao Đài chính thức khai đạo vào năm nào?",["1926","1930","1945","1954"],0],
+["Hội thề Rừng Rong gắn với nhân vật lịch sử nào?",["Trương Định","Nguyễn Trung Trực","Hoàng Lê Kha","Phan Đình Phùng"],2],
+["Anh hùng liệt sĩ Hoàng Lê Kha quê ở tỉnh nào?",["Tây Ninh","Long An","Bình Dương","Đồng Tháp"],0],
+["Chiến khu Dương Minh Châu được xây dựng trong bối cảnh nào?",["Kháng chiến chống Pháp","Thời Tây Sơn","Thời Lê sơ","Thời Bắc thuộc"],0],
+["Di tích lịch sử - văn hóa thường có ý nghĩa chính nào?",["Lưu giữ dấu tích và ký ức lịch sử","Chỉ phục vụ mua bán","Chỉ để giải trí","Thay thế sách giáo khoa"],0],
+["Ngày 30/4/1975 đánh dấu sự kiện nào?",["Giải phóng miền Nam, thống nhất đất nước","Cách mạng tháng Tám","Thành lập Đảng","Tổng tuyển cử đầu tiên"],0],
+["Tây Ninh có vai trò gì trong tuyến hành lang chiến lược thời kháng chiến?",["Địa bàn nối miền Đông Nam Bộ với biên giới","Trung tâm khai thác than","Cảng hàng không quốc tế","Căn cứ hải quân"],0],
+["Bảo tồn di tích lịch sử giúp thế hệ trẻ điều gì?",["Hiểu truyền thống và biết ơn thế hệ trước","Quên quá khứ","Chỉ tăng du lịch","Không có tác dụng"],0],
+["Khu di tích lịch sử cách mạng nổi bật ở Tân Biên là?",["Căn cứ Trung ương Cục miền Nam","Địa đạo Củ Chi","Nhà tù Côn Đảo","Thành cổ Quảng Trị"],0]
+],
+[
+["Chiến thắng Tua Hai (1960) có ý nghĩa nổi bật nào?",["Mở đầu phong trào đồng khởi vũ trang ở Nam Bộ","Kết thúc chiến tranh","Giải phóng Sài Gòn","Thành lập nước Việt Nam"],0],
+["Tây Ninh được giải phóng hoàn toàn vào ngày nào năm 1975?",["30/4","29/4","1/5","2/9"],0],
+["Di tích Căn cứ Trung ương Cục miền Nam nằm trong vùng rừng nào?",["Rừng Chàng Riệc","Rừng U Minh","Rừng Cúc Phương","Rừng Sác"],0],
+["Vì sao cần tìm hiểu lịch sử địa phương?",["Hiểu cội nguồn nơi mình sống","Chỉ để ghi nhớ ngày tháng","Để thay môn học khác","Không cần thiết"],0],
+["Địa danh Mộc Bài gắn với loại hình giao thông nào?",["Cửa khẩu đường bộ quốc tế","Cảng biển","Sân bay","Ga đường sắt"],0],
+["Tây Ninh từng là địa bàn đứng chân của cơ quan lãnh đạo cách mạng nào?",["Trung ương Cục miền Nam","Phủ Thủ tướng","Quốc hội khóa I","Triều đình Huế"],0],
+["Một cách thiết thực để tri ân người có công là gì?",["Chăm sóc gia đình chính sách, tìm hiểu lịch sử","Phá hoại di tích","Thờ ơ với cộng đồng","Lan truyền thông tin sai"],0],
+["Khi tham quan di tích, hành động nào đúng?",["Giữ gìn vệ sinh và tuân thủ nội quy","Viết vẽ lên di tích","Lấy hiện vật làm kỷ niệm","Gây ồn ào"],0],
+["Tây Ninh có ý nghĩa lịch sử đặc biệt trong kháng chiến vì là?",["Địa bàn căn cứ và chiến trường quan trọng","Trung tâm đóng tàu biển","Thủ đô cả nước","Vùng cực Bắc"],0],
+["Thông điệp phù hợp nhất khi học lịch sử Tây Ninh là?",["Trân trọng quá khứ, xây dựng quê hương","Chỉ học để thi","Không cần bảo tồn","Lịch sử không liên quan hiện tại"],0]
+]
+];
+let player=null, qIndex=0, roundIndex=0, score=0, seconds=15, clock=null, answered=false;
+let players=JSON.parse(localStorage.getItem("tn_players")||"[]");
+let reports=JSON.parse(localStorage.getItem("tn_reports")||"[]");
+let gameStarted=localStorage.getItem("tn_started")==="1";
+function save(){localStorage.setItem("tn_players",JSON.stringify(players));localStorage.setItem("tn_reports",JSON.stringify(reports));}
+function panel(id){["login","waiting","contest","result","adminLogin","admin"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));}
+function showLogin(){panel("login")} function showAdminLogin(){panel("adminLogin")}
+function joinGame(){let n=document.getElementById("playerName").value.trim();if(!n){document.getElementById("loginMsg").textContent="Vui lòng nhập tên.";return}
+player={id:Date.now()+Math.random(),name:n,score:0,round:0,status:"Đang chờ",banned:false};players.push(player);save();document.getElementById("welcomeName").textContent=n;panel("waiting");renderWaiting();if(gameStarted)beginForPlayer();}
+function logout(){if(clock)clearInterval(clock);player=null;panel("login")}
+function renderWaiting(){document.getElementById("gameStatus").textContent=gameStarted?"Cuộc thi đã bắt đầu":"Đang chờ quản trị viên bắt đầu";document.getElementById("waitingList").innerHTML=players.filter(p=>!p.banned).map(p=>"• "+esc(p.name)+" — "+esc(p.status)).join("<br>")||"Chưa có thí sinh."}
+function adminLogin(){if(document.getElementById("adminPass").value==="admin123"){panel("admin");refreshAdmin()}else document.getElementById("adminMsg").textContent="Sai mật khẩu."}
+function startGame(){gameStarted=true;localStorage.setItem("tn_started","1");players.forEach(p=>{if(!p.banned&&p.status==="Đang chờ")p.status="Sẵn sàng"});save();refreshAdmin();if(player&&!player.banned)beginForPlayer();}
+function beginForPlayer(){let p=players.find(x=>x.id===player.id);if(!p||p.banned){panel("waiting");return}roundIndex=0;qIndex=0;score=0;player.score=0;nextQuestion();panel("contest");}
+function nextQuestion(){if(roundIndex>=4){finish();return}if(qIndex>=10){roundIndex++;qIndex=0;if(roundIndex>=4){finish();return}}
+answered=false;seconds=15;let q=rounds[roundIndex][qIndex];document.getElementById("roundLabel").textContent="Vòng "+(roundIndex+1);document.getElementById("qLabel").textContent="Câu "+(qIndex+1)+"/10";document.getElementById("question").textContent=q[0];document.getElementById("feedback").textContent="";document.getElementById("score").textContent=score;document.getElementById("roundProgress").textContent="Vòng "+(roundIndex+1)+"/4";
+document.getElementById("answers").innerHTML=q[1].map((a,i)=>`<button class="answer" onclick="choose(${i})">${"ABCD"[i]}. ${esc(a)}</button>`).join("");updateTimer();if(clock)clearInterval(clock);clock=setInterval(()=>{seconds--;updateTimer();if(seconds<=0){clearInterval(clock);if(!answered)choose(-1)}},1000);}
+function updateTimer(){document.getElementById("timer").textContent=seconds;document.getElementById("timerBar").style.width=(seconds/15*100)+"%";}
+function choose(i){if(answered)return;answered=true;if(clock)clearInterval(clock);let q=rounds[roundIndex][qIndex],ok=i===q[2];if(ok)score+=10;document.querySelectorAll(".answer").forEach((b,j)=>{b.disabled=true;if(j===q[2])b.style.background="#236746";if(j===i&&!ok)b.style.background="#743b45"});document.getElementById("feedback").textContent=i===-1?"Hết giờ! Đáp án đúng: "+q[1][q[2]]:(ok?"Chính xác! +10 điểm":"Chưa đúng. Đáp án: "+q[1][q[2]]);document.getElementById("score").textContent=score;setTimeout(()=>{qIndex++;nextQuestion()},1100);}
+function finish(){if(clock)clearInterval(clock);let p=players.find(x=>x.id===player.id);if(p){p.score=score;p.status="Hoàn thành"}save();document.getElementById("finalResult").textContent=player.name+" đạt "+score+" / 400 điểm.";panel("result");}
+function backWaiting(){panel("waiting");renderWaiting()}
+function report(id){let p=players.find(x=>x.id===id);if(!p)return;let reason=prompt("Nhập nội dung báo cáo vi phạm của "+p.name+":");if(!reason)return;reports.push({name:p.name,reason,time:new Date().toLocaleString("vi-VN")});save();refreshAdmin();}
+function ban(id){let p=players.find(x=>x.id===id);if(!p)return;if(confirm("Cấm thi thí sinh "+p.name+"?")){p.banned=true;p.status="Bị cấm thi";save();refreshAdmin();}}
+function refreshAdmin(){document.getElementById("totalPlayers").textContent=players.length;document.getElementById("finishedPlayers").textContent=players.filter(p=>p.status==="Hoàn thành").length;document.getElementById("reportCount").textContent=reports.length;document.getElementById("adminPlayers").innerHTML=players.length?`<table><tr><th>Thí sinh</th><th>Trạng thái</th><th>Điểm</th><th>Thao tác</th></tr>${players.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.status)}</td><td>${p.score||0}</td><td><button class="secondary" onclick="report(${p.id})">Báo cáo</button><button class="danger" onclick="ban(${p.id})" ${p.banned?"disabled":""}>Cấm thi</button></td></tr>`).join("")}</table>`:"Chưa có thí sinh.";document.getElementById("reports").innerHTML=reports.length?reports.map(r=>`<p>🚩 <b>${esc(r.name)}</b>: ${esc(r.reason)} <small>(${esc(r.time)})</small></p>`).join(""):"Chưa có báo cáo.";}
+function resetGame(){if(!confirm("Xóa dữ liệu phiên demo và bắt đầu lại?"))return;players=[];reports=[];gameStarted=false;localStorage.removeItem("tn_players");localStorage.removeItem("tn_reports");localStorage.removeItem("tn_started");refreshAdmin();}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+</script>
+</body></html>
